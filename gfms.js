@@ -15,9 +15,9 @@ var utilz = require('utilz');
 var optimist = require('optimist');
 var tmp = require('temporary');
 
-var phantom_sync = require('phantom-sync')
-var phantom = phantom_sync.phantom
-var sync = phantom_sync.sync
+var phantom_sync = require('phantom-sync');
+var phantom = phantom_sync.phantom;
+var sync = phantom_sync.sync;
 
 var pkgJson = require('./package.json');
 
@@ -30,13 +30,19 @@ var argv = optimist
     .demand('p')
     .alias('p', 'port')
     .describe('p', 'Port number to listen at.')
+    .default('p', '7777')
     .alias('h', 'host')
     .describe('h', 'Host address to bind to.')
     .default('h', 'localhost')
+    .alias('d', 'directory')
+    .describe('h', 'Directory to use as root.')
+    .default('d', process.cwd())
     .describe('proxy', 'if behind a proxy, proxy url.')
     .argv;
 
-var rootUrl = 'http://' + argv.h + ':' + argv.p + '/'
+var rootUrl = 'http://' + argv.h + ':' + argv.p + '/';
+
+var rootDir = argv.d;
 
 var pub = __dirname + '/public';
 var views = __dirname + '/views';
@@ -73,35 +79,35 @@ function is_sourcecode(v) {
 app.get('*', function(req, res, next) {
 
     if ('pdf' in req.query) {
-        var urlToRender = rootUrl + req.path + '?printerFriendly'
+        var urlToRender = rootUrl + req.path + '?printerFriendly';
 
-        var tmpFileBase = new tmp.File()
-        var tmpFilePdfPath = tmpFileBase + '.pdf'
+        var tmpFileBase = new tmp.File();
+        var tmpFilePdfPath = tmpFileBase + '.pdf';
 
         sync(function() {
-            var ph = phantom.create()
-            var page = ph.createPage()
+            var ph = phantom.create();
+            var page = ph.createPage();
             page.set("paperSize", { format: "A4", orientation: 'portrait', margin: '0.6cm' });
             page.viewPortSize = { width: 1366, height: 768 };
-            page.open(urlToRender)
+            page.open(urlToRender);
 
-            page.render(tmpFilePdfPath)
+            page.render(tmpFilePdfPath);
 
-            var pdfFileContents = fs.readFileSync(tmpFilePdfPath)
-            tmpFileBase.unlink()
-            fs.unlink(tmpFilePdfPath)
+            var pdfFileContents = fs.readFileSync(tmpFilePdfPath);
+            tmpFileBase.unlink();
+            fs.unlink(tmpFilePdfPath);
 
             ph.exit();
             res.send(200, pdfFileContents);
-        })
+        });
 
         res.set('Content-Type', 'application/pdf');
-        return 
+        return;
     }
 
 
-    var styles = ('printerFriendly' in req.query) ? ['/print.css'] : []
-    
+    var styles = ('printerFriendly' in req.query) ? ['/print.css'] : [];
+
     if (req.path.indexOf('/styles/') === 0) {
         var style = styles[req.path];
         if(!style) {
@@ -116,9 +122,9 @@ app.get('*', function(req, res, next) {
 
     var base = req.path.replace('..', 'DENIED').replace(/\/$/, '');
     var query = req.query || {};
-    var dir = decodeURI(process.cwd() + base);
+    var dir = decodeURI(rootDir + base);
     var lang = "";
-    
+
     var stat;
     try {
         stat = fs.statSync(dir);
@@ -126,9 +132,9 @@ app.get('*', function(req, res, next) {
     catch(e) {
         return next();
     }
-    
+
     if(stat.isDirectory()) {
-        renderDir(base, dir, styles, res)
+        renderDir(base, dir, styles, res);
     } else if(is_markdown(dir)) {
         renderFile(dir, _x(next, true, function(err, rendered) {
             res.render('file', {
@@ -163,7 +169,7 @@ app.get('*', function(req, res, next) {
                 styles: styles,
                 fullname: dir
             });
-        }));        
+        }));
     }
 
     else
@@ -172,17 +178,17 @@ app.get('*', function(req, res, next) {
 
 function renderDir(base, dir, styles, res) {
     // stat
-    var files = _.chain(fs.readdirSync(dir)).map(function(v) { 
-        return { name: v, stat: fs.statSync(dir + '/' + v) }
-    })
+    var files = _.chain(fs.readdirSync(dir)).map(function(v) {
+        return { name: v, stat: fs.statSync(dir + '/' + v) };
+    });
 
     // show only docs
     files = files.filter(function(fileDesc) {
         return fileDesc.stat.isDirectory() || (fileDesc.stat.isFile() && (is_markdown(fileDesc.name) || is_image(fileDesc.name)));
-    })
+    });
 
     // sort
-    files = files.sortBy(function(entry) { return !entry.stat.isDirectory() })
+    files = files.sortBy(function(entry) { return !entry.stat.isDirectory(); });
 
     // prepare file list for jade template
     files = files.map(function(fileDesc) {
@@ -191,7 +197,7 @@ function renderDir(base, dir, styles, res) {
             name: fileDesc.name,
             type: fileDesc.stat.isDirectory() ? 'directory' : (is_image(fileDesc.name) ? 'media' : 'text')
         };
-    })
+    });
 
     files = files.value();
     // add parent directory
@@ -200,9 +206,9 @@ function renderDir(base, dir, styles, res) {
             url: base.slice(0, base.lastIndexOf('/')) || '/',
             name: '..',
             type: 'directory'
-        })
+        });
     }
-   
+
     res.render('directory', {
         files: files,
         dir: dir,
@@ -237,7 +243,7 @@ function renderWithMarked(contents, cb) { // cb(err, res)
         if (lang) {
             return highlight.highlight(lang, code, true).value;
         } else {
-            code
+            code;
         }
       }
     });
@@ -255,5 +261,5 @@ process.on('SIGINT', function() {
 
 _x(cb, false, function() {
         server.listen(argv.p, argv.h);
-        console.log('GFMS ' + pkgJson.version + ' serving ' + process.cwd() + ' at ' + rootUrl + ' - press CTRL+C to exit.');
+        console.log('GFMS ' + pkgJson.version + ' serving ' + rootDir + ' at ' + rootUrl + ' - press CTRL+C to exit.');
 })();
