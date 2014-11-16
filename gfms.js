@@ -239,11 +239,15 @@ function renderWithMarked(contents, cb) { // cb(err, res)
       tables: true,
       smartLists: true,
       breaks: true,
+      emoji: function (emoji) {
+          var imageUrl = "https://cdn.qiita.com/emoji/" + encodeURIComponent(emoji) + ".png";
+          return '<img src="' + imageUrl + '" alt="' + emoji + '" width="20" height="20"></img>';
+      },
       highlight: function (code, lang) {
         if (lang) {
             return highlight.highlight(lang, code, true).value;
         } else {
-            code;
+            return code;
         }
       }
     });

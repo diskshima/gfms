@@ -21,7 +21,7 @@
     },
     "dependencies": {
         "express": "*",
-        "marked": "latest",
+        "marked": "diskshima/marked",
         "highlight.js": "latest",
         "jade": "*",
         "laeh2": "*",
